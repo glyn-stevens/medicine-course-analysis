@@ -3,22 +3,23 @@ from pathlib import Path
 
 import pandas as pd
 
+
 @dataclass
 class AreaDetails:
     region: str
-    main_city: list[str]
-    commutatble_cities: list[str]
-    
+    main_locs: list[str]
+    commutatble_locs: list[str]
+
 
 CAMBRIDGE = AreaDetails(
-    region= "East of England Foundation School",
-    main_city= [
+    region="East of England Foundation School",
+    main_locs=[
         "Cambridge",
         "Papworth Everard",
         "Papworth",
         "Papworth Hospital",
     ],
-    commutatble_cities= [
+    commutatble_locs=[
         "Bury St Edmunds",
         "Harlow",
         "Huntingdon",
@@ -29,8 +30,8 @@ CAMBRIDGE = AreaDetails(
     ],
 )
 SHEFFIELD = AreaDetails(
-    region= "Yorkshire and Humber Foundation School",
-    main_city= [
+    region="Yorkshire and Humber Foundation School",
+    main_locs=[
         "Sheffield S10 2JF",
         "Sheffield S10 2SF",
         "Sheffield S10 2SJ",
@@ -44,13 +45,11 @@ SHEFFIELD = AreaDetails(
         "Sheffield S5 7AU",
         "Sheffield S5 7JT",
     ],
-    commutatble_cities=["Rotherham S60 2UD"],
+    commutatble_locs=["Rotherham S60 2UD"],
 )
 
 SOUTH_COAST = AreaDetails(
-    region="Wessex Foundation School",
-    main_city=["Poole", "Bournemouth"],
-    commutatble_cities=[]
+    region="Wessex Foundation School", main_locs=["Poole", "Bournemouth"], commutatble_locs=[]
 )
 
 DATA_DIR = Path.cwd() / "data"
@@ -60,11 +59,7 @@ def rotation_col(rotation_num: int) -> str:
     return f"Rotation {rotation_num} location"
 
 
-def main(
-    program_type: str,
-    area: AreaDetails,
-    print_matching_placements: bool
-) -> None:
+def main(program_type: str, area: AreaDetails, print_matching_placements: bool) -> None:
     # Column headers
     region_col = "Foundation School"
     program_type_col = "Programme Type"
@@ -78,10 +73,10 @@ def main(
     mask_region = df_all[region_col] == area.region
     mask_program_type = df_all[program_type_col] == program_type
     df_region = df_all[mask_region & mask_program_type]
-    mask_main_city = (df_region[rotation_col(1)].isin(area.main_city)) | (
-        df_region[rotation_col(4)].isin(area.main_city)
+    mask_main_city = (df_region[rotation_col(1)].isin(area.main_locs)) | (
+        df_region[rotation_col(4)].isin(area.main_locs)
     )
-    main_city_or_commutable = area.commutatble_cities + area.main_city
+    main_city_or_commutable = area.commutatble_locs + area.main_locs
     mask_commutable = df_region[all_rotation_cols].isin(main_city_or_commutable).sum(axis=1) >= 5
     mask_comutable_with_main_city = mask_main_city & mask_commutable
 
@@ -89,22 +84,28 @@ def main(
     region_stats = {}
     num_in_region = len(df_region)
     region_stats[f"Region: {area.region}"] = num_in_region
-    region_stats[f"Rotation 1 or 4 in: {area.main_city[0]}"] = mask_main_city.sum()
-    region_stats[f"Rotation 1 or 4 in: {area.main_city[0]}, and at least 5/6 rotations commutable"] = (
-        mask_comutable_with_main_city.sum()
+    region_stats[f"Rotation 1 or 4 in: {area.main_locs[0]}"] = mask_main_city.sum()
+    region_stats[
+        f"Rotation 1 or 4 in: {area.main_locs[0]}, and at least 5/6 rotations commutable"
+    ] = mask_comutable_with_main_city.sum()
+    region_stats[f"At least 5/6 rotations commutable from: {area.main_locs[0]}"] = (
+        mask_commutable.sum()
     )
-    region_stats[f"At least 5/6 rotations commutable from: {area.main_city[0]}"] = mask_commutable.sum()
     all_locations_in_region = pd.concat([df_region[col] for col in all_rotation_cols])
-    uncommutable_cities = {loc for loc in all_locations_in_region if loc not in main_city_or_commutable}
-    locations_with_rotation_in_main_city = pd.concat([df_region[mask_main_city][col] for col in all_rotation_cols])
-    uncommutable_with_rotation_in_main_city = {loc for loc in locations_with_rotation_in_main_city if loc not in main_city_or_commutable}
-    
+    uncommutable = {loc for loc in all_locations_in_region if loc not in main_city_or_commutable}
+    loc_with_rotation_in_main = pd.concat(
+        [df_region[mask_main_city][col] for col in all_rotation_cols]
+    )
+    uncommutable_with_rotation_in_main = {
+        loc for loc in loc_with_rotation_in_main if loc not in main_city_or_commutable
+    }
+
     # Print results
     print(f"Results for program type: {program_type}")
     for key, stat in region_stats.items():
         print(f"Number placements with {key}: {stat} ( = {stat/num_in_region*100:.1f}%)")
-    print(f"Locations deemed uncommutable: {sorted(uncommutable_cities)}")
-    print(f"Locations deemed uncommutable which has a rotation in which also have a rotation in main city: {uncommutable_with_rotation_in_main_city}")
+    print(f"Locations deemed uncommutable: {sorted(uncommutable)}")
+    print(f"Uncommutable locs with placements in main city: {uncommutable_with_rotation_in_main}")
     if print_matching_placements:
         print("Placement locations:")
         pd.set_option("display.max_rows", 200)
