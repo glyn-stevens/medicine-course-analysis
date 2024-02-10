@@ -6,12 +6,14 @@ import pandas as pd
 
 @dataclass
 class AreaDetails:
+    place_to_live: str
     region: str
     main_locs: list[str]
     commutatble_locs: list[str]
 
 
 CAMBRIDGE = AreaDetails(
+    place_to_live="Cambridge",
     region="East of England Foundation School",
     main_locs=[
         "Cambridge",
@@ -30,6 +32,7 @@ CAMBRIDGE = AreaDetails(
     ],
 )
 SHEFFIELD = AreaDetails(
+    place_to_live="Sheffield",
     region="Yorkshire and Humber Foundation School",
     main_locs=[
         "Sheffield S10 2JF",
@@ -49,7 +52,7 @@ SHEFFIELD = AreaDetails(
 )
 
 SOUTH_COAST = AreaDetails(
-    region="Wessex Foundation School", main_locs=["Poole", "Bournemouth"], commutatble_locs=[]
+    place_to_live="Bournemouth/Poole", region="Wessex Foundation School", main_locs=["Poole", "Bournemouth"], commutatble_locs=[]
 )
 
 DATA_DIR = Path.cwd() / "data"
@@ -84,11 +87,11 @@ def main(program_type: str, area: AreaDetails, print_matching_placements: bool) 
     region_stats = {}
     num_in_region = len(df_region)
     region_stats[f"Region: {area.region}"] = num_in_region
-    region_stats[f"Rotation 1 or 4 in: {area.main_locs[0]}"] = mask_main_city.sum()
+    region_stats[f"Rotation 1 or 4 in: {area.place_to_live}"] = mask_main_city.sum()
     region_stats[
-        f"Rotation 1 or 4 in: {area.main_locs[0]}, and at least 5/6 rotations commutable"
+        f"Rotation 1 or 4 in: {area.place_to_live}, and at least 5/6 rotations commutable"
     ] = mask_comutable_with_main_city.sum()
-    region_stats[f"At least 5/6 rotations commutable from: {area.main_locs[0]}"] = (
+    region_stats[f"At least 5/6 rotations commutable from: {area.place_to_live}"] = (
         mask_commutable.sum()
     )
     all_locations_in_region = pd.concat([df_region[col] for col in all_rotation_cols])
@@ -107,9 +110,9 @@ def main(program_type: str, area: AreaDetails, print_matching_placements: bool) 
     print(f"Locations deemed uncommutable: {sorted(uncommutable)}")
     print(f"Uncommutable locs with placements in main city: {uncommutable_with_rotation_in_main}")
     if print_matching_placements:
-        print("Placement locations:")
+        print("Placement locations with at least one year in main location:")
         pd.set_option("display.max_rows", 200)
-        print(df_region[mask_commutable][all_rotation_cols])
+        print(df_region[mask_comutable_with_main_city][all_rotation_cols])
 
 
 if __name__ == "__main__":
